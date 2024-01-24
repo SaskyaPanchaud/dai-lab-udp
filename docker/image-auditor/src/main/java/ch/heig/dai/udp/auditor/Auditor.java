@@ -9,6 +9,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.gson.Gson;
 
+/**
+ * Main application, creating a SoundListener and a StatusSender.
+ */
 public class Auditor {
     final static String IPADDRESS = "239.255.22.5";
     final static int LISTENER_PORT = 9904;
@@ -21,11 +24,14 @@ public class Auditor {
         Thread listenerThread = new Thread(listener);
         listenerThread.start();
 
-        Thread senderThread = new Thread(sender);
-        senderThread.start();
+        sender.run();
     }
 }
 
+/**
+ * This class listens sounds sent by musicians to it's multicast address,
+ * and keeps track of the active musicians.
+ */
 class SoundListener implements Runnable {
     private final String IPAddress;
     private final int port; 
@@ -37,6 +43,10 @@ class SoundListener implements Runnable {
         this.port = port;
     }
 
+    /**
+     * Run the sound listener.
+     */
+    @Override
     public void run() {
         try (MulticastSocket socket = new MulticastSocket(port)) {
 
@@ -55,6 +65,12 @@ class SoundListener implements Runnable {
         }
     }
 
+    /**
+     * Recieve a message from the socket.
+     * @param socket The socker from which to recieve the message.
+     * @return The message as a String.
+     * @throws IOException
+     */
     private String recieveMessage(MulticastSocket socket) throws IOException {
         byte[] buffer = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -63,6 +79,10 @@ class SoundListener implements Runnable {
         return new String(packet.getData(), 0, packet.getLength(), UTF_8);
     }
 
+    /**
+     * Update the musicians map with the sound stored in the message.
+     * @param message The message containing a sound emmited by a musician.
+     */
     private void updateMusicians(String message) {
         RecievedSound sound = GSON.fromJson(message, RecievedSound.class);
 
@@ -73,6 +93,9 @@ class SoundListener implements Runnable {
         idToMusician.get(sound.getUuid()).updateLastActivity();
     }
 
+    /**
+     * Remove any inactive musician.
+     */
     private void purgeInactiveMusicians() {
         for (var musician : idToMusician.values()) {
             if (!musician.isActive()) {
@@ -81,12 +104,21 @@ class SoundListener implements Runnable {
         }
     }
 
+    /**
+     * Get the auditor's up-to-date payload with information
+     * about the musicians currently playing.
+     * @return The payload as a JSON String.
+     */
     public String getStatusPayLoad() {
         purgeInactiveMusicians();
         return new Gson().toJson(idToMusician.values());
     }
 }
 
+/**
+ * This class sends informations about the musicians currently playing
+ * upon recieving a TCP connection.
+ */
 class StatusSender implements Runnable {
     private final int port;
     private SoundListener listener;
@@ -96,6 +128,9 @@ class StatusSender implements Runnable {
         this.listener = listener;
     }
 
+    /**
+     * Run the status sender.
+     */
     @Override
     public void run() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -116,34 +151,50 @@ class StatusSender implements Runnable {
     }
 }
 
+/**
+ * Class allowing serialization and storing of Musicians. 
+ * The attributes match the information sent by the StatusSender.
+ */
 class Musician {
-    private final String UUID;
+    private final String uuid;
     private String instrument;
     private long lastActivity;
 
     Musician(String uuid, String instrument) {
-        UUID = uuid;
+        this.uuid = uuid;
         this.instrument = instrument;
         updateLastActivity();
     }
 
+    /**
+     * Set the lastActivity as the current time.
+     */
     void updateLastActivity() {
         lastActivity = System.currentTimeMillis();
     }
 
     public String getUuid() {
-        return UUID;
+        return uuid;
     }
 
     public String getInstrument() {
         return instrument;
     }
 
+    /**
+     * Check if the musician is active, i.e. if it has emmited a sound in 
+     * the last 5 seconds.
+     * @return true if the musician is active, false otherwise.
+     */
     public boolean isActive() {
         return System.currentTimeMillis() - lastActivity < 5000;
     }
 }
 
+/**
+ * Class allowing de-serialization of recieved sounds from musicians,
+ * which are formatted as JSON objects matching this class' attributes.
+ */
 class RecievedSound {
     private String uuid;
     private String sound;
@@ -166,10 +217,6 @@ class RecievedSound {
 
     public String getUuid() {
         return uuid;
-    }
-
-    public String getSound() {
-        return sound;
     }
 
     public String getInstrument() {
