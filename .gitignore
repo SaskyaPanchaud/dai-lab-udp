@@ -5,6 +5,7 @@ jspm_packages/
 
 # Java
 **/target/
+**/dependency-reduced-pom.xml
 
 # Optional npm cache directory
 .npm
