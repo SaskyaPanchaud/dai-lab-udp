@@ -51,11 +51,13 @@ class SoundListener implements Runnable {
         try (MulticastSocket socket = new MulticastSocket(port)) {
 
             InetSocketAddress group_address =  new InetSocketAddress(IPAddress, port);
+
+            // FIXME : comment tu recuperes le nom de l'interface de l'ordi ?
             NetworkInterface netif = NetworkInterface.getByName("eth0");
             socket.joinGroup(group_address, netif);
 
             while (true) {
-                String message = recieveMessage(socket);
+                String message = receiveMessage(socket);
                 updateMusicians(message);
             }
 
@@ -71,7 +73,7 @@ class SoundListener implements Runnable {
      * @return The message as a String.
      * @throws IOException
      */
-    private String recieveMessage(MulticastSocket socket) throws IOException {
+    private String receiveMessage(MulticastSocket socket) throws IOException {
         byte[] buffer = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
@@ -151,6 +153,7 @@ class StatusSender implements Runnable {
     }
 }
 
+// FIXME : pourquoi on retrouve la classe Musician aussi ici ? On pourrait pas rajouter l'attribut concernant l'activite dans l'autre classe ?
 /**
  * Class allowing serialization and storing of Musicians. 
  * The attributes match the information sent by the StatusSender.
