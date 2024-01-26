@@ -27,6 +27,7 @@ public class Musician {
     }
 
     public static void main(String[] args) throws InterruptedException {
+        // FIXME : pourquoi on ne verifie pas tout simplement == 1 ?
         if (args.length < 1) {
             throw new RuntimeException("Please specify the instrument to play");
         }
